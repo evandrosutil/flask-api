@@ -1,0 +1,105 @@
+Description: Cria uma instancia EC2, um cluster Elasticache (redis) e  uma tabela no DynamoDB para rodar a API criada.
+
+Resources:
+    SGBase:
+        Type: 'AWS::EC2::SecurityGroup'
+        Properties:
+            GroupDescription: Base Security Group
+            SecurityGroupIngress:
+                - IpProtocol: tcp
+                  CidrIp: 0.0.0.0/0
+                  FromPort: 22
+                  ToPort: 22
+    SGBaseIngress:
+        Type: 'AWS::EC2::SecurityGroupIngress'
+        Properties:
+            GroupId: !Ref SGBase
+            IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            SourceSecurityGroupId: !GetAtt SGBase.GroupId
+    ElasticacheSecurityGroup:
+        Type: 'AWS::EC2::SecurityGroup'
+        Properties:
+            GroupDescription: Elasticache Security Group
+            SecurityGroupIngress:
+                FromPort: '11211'
+                ToPort: '11211'
+                SourceSecurityGroupName: !Ref InstanceSecurityGroup
+    ElasticacheCluster:
+        Type: AWS::ElastiCache::CacheCluster
+        Properties:
+          CacheNodeType: String
+          Engine: redis
+          NumCacheNodes: '1'
+          Port: Integer
+          VpcSecurityGroupIds:
+            - !GetAtt
+                - ElasticacheSecurityGroup
+                - GroupId
+    DynamoDB:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            KeySchema:
+                - AttributeName: Artist
+                  KeyType: HASH
+            AttributeDefinitions:
+                - AttributeName: Artist
+                  AttributeType: S
+            ProvisionedThroughput:
+                ReadCapacityUnits: 5
+                WriteCapacityUnits: 5
+            TableName: ArtistsTopSongs
+    EC2:
+        Type: AWS::EC2::LaunchTemplate
+        Properties:
+            LaunchTemplateData:
+                BlockDeviceMappings:
+                    - DeviceName: /dev/sda1
+                      Ebs:
+                        DeleteOnTermination: true
+                        Encrypted: false
+                        SnapshotId: snap-04e912a474a57b607
+                        VolumeSize: 8
+                        VolumeType: gp2
+                CapacityReservationSpecification:
+                    CapacityReservationPreference: open
+                CpuOptions:
+                    CoreCount: 1
+                    ThreadsPerCore: 1
+                CreditSpecification:
+                    CpuCredits: standard
+                DisableApiTermination: false
+                EbsOptimized: false
+                EnclaveOptions:
+                    Enabled: false
+                HibernationOptions:
+                    Configured: false
+                ImageId: ami-00399ec92321828f5
+                InstanceInitiatedShutdownBehavior: stop
+                InstanceType: t2.micro
+                KeyName: ec21
+                MetadataOptions:
+                    HttpEndpoint: enabled
+                    HttpPutResponseHopLimit: 1
+                    HttpTokens: optional
+                Monitoring:
+                    Enabled: false
+                NetworkInterfaces:
+                    - AssociatePublicIpAddress: true
+                      DeleteOnTermination: true
+                      Description: ''
+                      DeviceIndex: 0
+                      Groups:
+                        - sg-0cd0b5f7884496dcb
+                      InterfaceType: interface
+                      Ipv6Addresses: []
+                      NetworkCardIndex: 0
+                      PrivateIpAddresses:
+                        - Primary: true
+                      PrivateIpAddress: 172.31.14.167
+                      SubnetId: subnet-a2e964c9
+                Placement:
+                    AvailabilityZone: us-east-2a
+                    GroupName: ''
+                    Tenancy: default
